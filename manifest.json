@@ -1,0 +1,9 @@
+{
+  "short_name": "Money CRM",
+  "name": "Money CRM Mobile Commute App",
+  "icons": [],
+  "start_url": ".",
+  "background_color": "#4f46e5",
+  "theme_color": "#4f46e5",
+  "display": "standalone"
+}

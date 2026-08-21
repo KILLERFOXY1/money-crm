@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Money CRM Mobile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+  </head>
+  <body class="bg-slate-100 text-slate-800 antialiased selection:bg-indigo-500 selection:text-white">
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect } = React;
+
+      // REPLACE THIS WITH YOUR GOOGLE APPS SCRIPT WEB APP URL
+      const API_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL";
+
+      function App() {
+        const [tab, setTab] = useState('followup');
+        const [clients, setClients] = useState([]);
+        const [filter, setFilter] = useState('ALL');
+        const [loading, setLoading] = useState(false);
+        const [saving, setSaving] = useState(false);
+
+        const [formData, setFormData] = useState({
+          'Client Name': '',
+          'Contact Number': '',
+          'Chat Link': '',
+          'Payment link': '',
+          'Order Value': '',
+          'Order number': '',
+          'Status': 'WIP',
+          'Country': 'India',
+          'FRD calling': 'No',
+          'Query raised': 'No',
+          'Update received': 'No',
+          'Lost reason Remarks': '',
+          'Follow-up Date': '',
+          "Today's Remark": ''
+        });
+
+        const fetchClients = async () => {
+          if (!API_URL || API_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL") return;
+          setLoading(true);
+          try {
+            const res = await fetch(API_URL);
+            const data = await res.json();
+            setClients(data);
+          } catch (err) {
+            console.error("Error fetching data:", err);
+          }
+          setLoading(false);
+        };
+
+        useEffect(() => {
+          fetchClients();
+        }, []);
+
+        const handleInputChange = (field, value) => {
+          setFormData(prev => ({ ...prev, [field]: value }));
+        };
+
+        const handleSubmit = async (e) => {
+          e.preventDefault();
+          if (!API_URL || API_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL") {
+            alert("Please configure your API_URL first!");
+            return;
+          }
+          setSaving(true);
+          try {
+            await fetch(API_URL, {
+              method: 'POST',
+              body: JSON.stringify({ action: 'create', data: formData })
+            });
+            alert("New Entry Added Successfully!");
+            setFormData({
+              'Client Name': '', 'Contact Number': '', 'Chat Link': '', 'Payment link': '',
+              'Order Value': '', 'Order number': '', 'Status': 'WIP', 'Country': 'India',
+              'FRD calling': 'No', 'Query raised': 'No', 'Update received': 'No',
+              'Lost reason Remarks': '', 'Follow-up Date': '', "Today's Remark": ''
+            });
+            fetchClients();
+            setTab('followup');
+          } catch (err) {
+            alert("Failed to add entry. Check connection.");
+          }
+          setSaving(false);
+        };
+
+        const handleUpdate = async (rowIndex, updates) => {
+          if (!API_URL || API_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL") return;
+          setLoading(true);
+          try {
+            await fetch(API_URL, {
+              method: 'POST',
+              body: JSON.stringify({ action: 'update', rowIndex, data: updates })
+            });
+            fetchClients();
+          } catch (err) {
+            console.error("Failed to update:", err);
+            setLoading(false);
+          }
+        };
+
+        const filteredClients = clients.filter(c => {
+          if (filter === 'ALL') return true;
+          return (c['Status'] || '').toString().toUpperCase() === filter.toUpperCase();
+        });
+
+        return (
+          <div className="max-w-md mx-auto min-h-screen flex flex-col bg-slate-50 border-x border-slate-200">
+            {/* Header */}
+            <header className="sticky top-0 z-10 bg-indigo-600 text-white p-4 shadow-md flex justify-between items-center">
+              <div>
+                <h1 className="font-bold text-lg leading-tight">Money CRM</h1>
+                <p className="text-xs text-indigo-200">Mobile Commute Assistant</p>
+              </div>
+              <button onClick={fetchClients} className="p-2 bg-indigo-700 hover:bg-indigo-800 rounded-lg text-xs font-semibold active:scale-95 transition">
+                {loading ? '🔄 Loading...' : '🔄 Refresh'}
+              </button>
+            </header>
+
+            {/* Navigation Tabs */}
+            <div className="p-3 bg-white border-b flex gap-2">
+              <button 
+                onClick={() => setTab('followup')}
+                className={`flex-1 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition ${tab === 'followup' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600'}`}>
+                📋 Follow-Up List ({clients.length})
+              </button>
+              <button 
+                onClick={() => setTab('entry')}
+                className={`flex-1 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition ${tab === 'entry' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600'}`}>
+                ➕ New Data Entry
+              </button>
+            </div>
+
+            {/* Content Area */}
+            <main className="flex-1 p-3">
+              {tab === 'entry' && (
+                <form onSubmit={handleSubmit} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                  <h2 className="font-bold text-slate-800 text-sm border-b pb-2">Client Details</h2>
+                  
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Client Name</label>
+                    <input required type="text" className="w-full mt-1 p-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-indigo-500" value={formData['Client Name']} onChange={e => handleInputChange('Client Name', e.target.value)} placeholder="e.g. Rahul Sharma" />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Contact Number (WhatsApp)</label>
+                    <input required type="tel" className="w-full mt-1 p-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-indigo-500" value={formData['Contact Number']} onChange={e => handleInputChange('Contact Number', e.target.value)} placeholder="e.g. 919876543210" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Order Value (₹)</label>
+                      <input type="number" className="w-full mt-1 p-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-indigo-500" value={formData['Order Value']} onChange={e => handleInputChange('Order Value', e.target.value)} placeholder="5000" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Order ID</label>
+                      <input type="text" className="w-full mt-1 p-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-indigo-500" value={formData['Order number']} onChange={e => handleInputChange('Order number', e.target.value)} placeholder="ORD-101" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Chat Link</label>
+                    <input type="url" className="w-full mt-1 p-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-indigo-500" value={formData['Chat Link']} onChange={e => handleInputChange('Chat Link', e.target.value)} placeholder="Instagram / Drive / Web Chat URL" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Status</label>
+                      <select className="w-full mt-1 p-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-indigo-500" value={formData['Status']} onChange={e => handleInputChange('Status', e.target.value)}>
+                        <option value="WIP">WIP</option>
+                        <option value="PAID">PAID</option>
+                        <option value="QUERY RAISED">QUERY RAISED</option>
+                        <option value="PAYMENT LINK SHARED">PAYMENT LINK SHARED</option>
+                        <option value="NOT INTERESTED">NOT INTERESTED</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">FRD Calling</label>
+                      <select className="w-full mt-1 p-2.5 bg-slate-50 border rounded-xl text-sm focus:outline-indigo-500" value={formData['FRD calling']} onChange={e => handleInputChange('FRD calling', e.target.value)}>
+                        <option value="No">No</option>
+                        <option value="Yes">Yes</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button type="submit" disabled={saving} className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-md active:scale-98 transition">
+                    {saving ? 'Saving Entry...' : 'Save Row to Sheet'}
+                  </button>
+                </form>
+              )}
+
+              {tab === 'followup' && (
+                <div className="space-y-3">
+                  {/* Filter Chips */}
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+                    {['ALL', 'WIP', 'PAID', 'QUERY RAISED', 'PAYMENT LINK SHARED'].map(f => (
+                      <button 
+                        key={f}
+                        onClick={() => setFilter(f)}
+                        className={`px-3 py-1.5 rounded-full whitespace-nowrap font-semibold border transition ${filter === f ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}`}>
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Empty state */}
+                  {filteredClients.length === 0 && !loading && (
+                    <div className="p-8 text-center text-slate-400 bg-white rounded-2xl border border-dashed">
+                      <p className="text-sm font-medium">No clients found for this filter.</p>
+                      <p className="text-xs mt-1">Make sure your Apps Script Web App URL is configured.</p>
+                    </div>
+                  )}
+
+                  {/* Client Cards */}
+                  {filteredClients.map((client, idx) => {
+                    const phone = (client['Contact Number'] || '').toString().replace(/[^0-9]/g, '');
+                    const waUrl = phone ? `https://wa.me/${phone}` : '#';
+                    const chatUrl = client['Chat Link'] || '#';
+
+                    return (
+                      <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-bold text-slate-900 text-base">{client['Client Name'] || 'Unnamed'}</h3>
+                            <p className="text-xs font-mono text-slate-500">{client['Contact Number'] || 'No Contact'}</p>
+                          </div>
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 uppercase">
+                            {client['Status'] || 'WIP'}
+                          </span>
+                        </div>
+
+                        {/* Order & Remark Summary */}
+                        <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl text-slate-600">
+                          <div><span className="font-semibold">Order ID:</span> {client['Order number'] || '-'}</div>
+                          <div><span className="font-semibold">Value:</span> ₹{client['Order Value'] || '0'}</div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <a 
+                            href={chatUrl} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            className={`py-2.5 px-3 rounded-xl font-bold text-xs text-center border flex items-center justify-center gap-1 transition ${client['Chat Link'] ? 'bg-blue-50 text-blue-700 border-blue-200 active:bg-blue-100' : 'bg-slate-100 text-slate-400 border-slate-200 pointer-events-none'}`}>
+                            🔗 Open Chat
+                          </a>
+                          <a 
+                            href={waUrl} 
+                            target="_blank" 
+                            rel="noreferrer"
+                            className={`py-2.5 px-3 rounded-xl font-bold text-xs text-center flex items-center justify-center gap-1 transition ${phone ? 'bg-emerald-600 text-white shadow-sm active:bg-emerald-700' : 'bg-slate-100 text-slate-400 pointer-events-none'}`}>
+                            💬 WhatsApp
+                          </a>
+                        </div>
+
+                        {/* Follow Up Status Toggle */}
+                        <div className="pt-2 border-t flex items-center justify-between text-xs">
+                          <span className="font-medium text-slate-500">Follow-up status:</span>
+                          <button 
+                            onClick={() => handleUpdate(client.rowIndex, { 'Follow - up': client['Follow - up'] === 'Yes' ? 'No' : 'Yes' })}
+                            className={`px-3 py-1.5 rounded-lg font-bold transition ${client['Follow - up'] === 'Yes' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                            {client['Follow - up'] === 'Yes' ? '✓ Completed' : 'Mark Followed Up'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </main>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+  </body>
+</html>
